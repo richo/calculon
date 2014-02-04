@@ -23,6 +23,13 @@ last_result = defaultdict(constant_factory(None))
 last_line = ""
 repl = None
 
+def _create_incrementer():
+    i = [0]
+    def _():
+        i[0] += 1
+        return i[0]
+    return _
+
 class CalculonInterpreter(code.InteractiveInterpreter):
     def runsource(self, source, filename='<input>', symbol='single', encode=True):
         global disp, last_result, last_line, repl
@@ -84,6 +91,7 @@ class CalculonInterpreter(code.InteractiveInterpreter):
         return False
 
 
+inc = _create_incrementer()
 class Repl(object):
     def __init__(self, scr, offset=0):
         # set up windows
@@ -135,8 +143,11 @@ class Repl(object):
         return result
 
 
-def watch(varname, format='h'):
-    if type(varname) is str:
+def watch(varname, format='h', name=None):
+    if callable(varname):
+        disp.watch_var(varname, format, name="lambda%d" % inc())
+        disp.redraw()
+    elif type(varname) is str:
         if varname not in disp.get_var_names():
             disp.watch_var(varname, format)
             disp.redraw()

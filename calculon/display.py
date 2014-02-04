@@ -3,7 +3,9 @@ import string
 import struct
 import Pyro4
 import os
+from collections import OrderedDict, namedtuple
 from blessings import Terminal
+
 
 from .env import *
 
@@ -25,10 +27,11 @@ VALID_FORMATS = ['h','d','o','a','u','b']
 class HiddenCursor(object):
     def __enter__(self):
         os.system('tput civis')
-        
+
     def __exit__(self, type, value, traceback):
         os.system('tput cnorm')
 
+Watch = namedtuple('Watch', ('name', 'value', 'format'))
 
 class CalculonDisplay (object):
     def __init__(self):
@@ -37,8 +40,8 @@ class CalculonDisplay (object):
 
         self.config = self.init_config(CONFIG)
         self.bin_mode = self.config['bin_mode']
-        self.bin_row = self.config['bin_row'] 
-        self.bits = self.config['bits'] 
+        self.bin_row = self.config['bin_row']
+        self.bits = self.config['bits']
         self.formats = self.config['formats']
         self.align = self.config['align']
         self.padding = self.config['padding']
@@ -47,10 +50,14 @@ class CalculonDisplay (object):
         self.header = 'calculon v1.0'
         self.show_header = True
         self.lastvars = {}
-        self.vars = {}
-        self.vars['_'] = 0
-        self.var_fmt = {}
-        self.var_names = []
+        self.watches = OrderedDict()
+
+
+        # Acts as a facade for locals() in global scope
+        self.vars = {'_': 0}
+        # self.vars['_'] = 0
+        # self.var_fmt = {}
+        # self.var_names = []
         self.draw_state = {
             'header': True, 'value': True, 'vallabel': True, 'binlabel': True,
             'varlabel': True, 'varvalue': True, 'all': True
@@ -90,22 +97,22 @@ class CalculonDisplay (object):
             self.draw_state['varvalue'] = True
         self.redraw()
 
-    def watch_var(self, varname, format):
-        if varname not in self.vars:
-            self.var_fmt[varname] = format
-            self.vars[varname] = 0
-            self.var_names.append(varname)
-            self.draw_state['all'] = True
+    def watch_lambda(self, thunk, format, name=None):
+        if name not in self.watches:
+            if name is None:
+                name = "lambda_%d" % inc()
+            self.watches[name] = Watch(name, thunk, format)
 
-    def unwatch_var(self, varname):
-        if varname in self.vars:
-            del self.var_fmt[varname]
-            del self.vars[varname]
-            self.var_names.remove(varname)
-            self.draw_state['all'] = True
+    def watch_var(self, varname, format):
+        thunk = lambda: self.vars[varname]
+        self.watch_lambda(thunk, format, varname)
+
+    def unwatch(self, varname):
+        if varname in self.watches:
+            del self.watches[varname]
 
     def get_var_names(self):
-        return self.var_names
+        return map(lambda w: w.name, self.watches)
 
     def redraw(self, all=False):
         if self.draw_state['header'] or self.draw_state['all']:
@@ -267,13 +274,13 @@ class CalculonDisplay (object):
     def draw_vars(self):
         y = self.offset_vars() + self.padding['vartop']
         x = self.padding['left']
-        for var in self.var_names:
-            self.draw_value_at_row(self.vars[var], self.var_fmt[var], y, var)
+        for n, watch in self.watches.items():
+            self.draw_value_at_row(watch.value, watch.format, watch.name)
             y += 1
 
     def draw_var_labels(self):
         y = self.offset_vars() + self.padding['vartop']
-        for var in self.var_names:
-            self.draw_labels_at_row(self.var_fmt[var], y, var)
+        for n, watch in self.watches.items():
+            print repr(watch)
+            self.draw_labels_at_row(watch.format, y, watch.name)
             y += 1
-
