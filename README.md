@@ -92,6 +92,18 @@ Or memory:
     >>> V[V.rbp:V.rbp + 32]
     'x\xee\xbf_\xff\x7f\x00\x00\xfd\xf5\xad\x85\xff\x7f\x00\x00'
 
+Shell Integration
+-----------------
+
+There's a script in `contrib` which will setup tab completion for zsh. Simply:
+
+```bash
+
+source /path/to/calculon/contrib/calculon.zsh
+```
+
+Or at the content to your startup files.
+
 
 Credits
 -------
